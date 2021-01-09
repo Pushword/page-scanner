@@ -97,6 +97,7 @@ class PageScannerService
             // todo check redirection
             return;
         } elseif (200 != $response->getStatusCode()) {
+            file_put_contents('debug', $response);
             $this->addError('error on generating the page ('.$response->getStatusCode().')');
 
             return;
