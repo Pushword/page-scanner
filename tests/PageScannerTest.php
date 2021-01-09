@@ -24,7 +24,7 @@ class PageScannerTest extends KernelTestCase
         );
         $errors = $scanner->scan($this->getPage());
 
-        $this->assertSame('<code>/admin/</code> introuvable', $errors[0]['message']);
+        $this->assertStringContainsString('introuvable', $errors[0]['message']);
     }
 
     public function getPage(): PageInterface
