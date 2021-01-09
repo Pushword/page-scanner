@@ -192,7 +192,7 @@ class PageScannerService
      *
      * @return bool
      */
-    protected function urlExist($uri)
+    protected function urlExist(string $uri): bool
     {
         $harvest = Harvest::fromUrl(
             $uri,
@@ -210,7 +210,7 @@ class PageScannerService
         return true;
     }
 
-    protected function uriExist($uri)
+    protected function uriExist(string $uri): bool
     {
         $slug = ltrim($uri, '/');
 
