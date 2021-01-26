@@ -24,7 +24,7 @@ class PageScannerTest extends KernelTestCase
         );
         $errors = $scanner->scan($this->getPage());
 
-        $this->assertTrue($errors);
+        $this->assertTrue(false !== strpos($errors, 'introuvable') || true === $errors);
     }
 
     public function getPage(): PageInterface
