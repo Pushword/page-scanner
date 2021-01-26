@@ -24,7 +24,12 @@ class PageScannerTest extends KernelTestCase
         );
         $errors = $scanner->scan($this->getPage());
 
-        $this->assertTrue(false !== strpos($errors, 'introuvable') || true === $errors);
+        // bad design test because skeleton is well installed on local and not fully
+        // on github action
+        $this->assertTrue(
+            (\is_array($errors) && false !== strpos($errors[0]['message'], 'introuvable'))
+                || true === $errors
+        );
     }
 
     public function getPage(): PageInterface
