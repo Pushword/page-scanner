@@ -22,7 +22,9 @@
                 {% else  %}
                     <p class="alert alert-warning">
                         Résultat du scan du {{ lastEdit|date('d/m/Y à H:i') }}
-                        {{ newRun ? ' (<em>nouveau scan en cours</em>)' : ('(<a href="'~ path('pushword_page_scanner', {'force': '1'}) ~'">forcer un nouveau scan</a>)')|raw }}.
+                        {{ newRun ? ' (<em>nouveau scan en cours</em>, la page s\'actualisera automatiquement à la fin de celui-ci'<meta http-equiv="refresh" content="10">
+
+)' : ('(<a href="'~ path('pushword_page_scanner', {'force': '1'}) ~'">forcer un nouveau scan</a>)')|raw }}.
                     </p>
 
                     <table class="table table-bordered table-striped table-hover sonata-ba-list">
