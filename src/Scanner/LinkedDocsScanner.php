@@ -45,8 +45,6 @@ final class LinkedDocsScanner extends AbstractScanner
         if ($this->pageHtml) {
             $this->checkLinkedDocs($this->getLinkedDocs());
         }
-
-        return;
     }
 
     private static function prepareForRegex($var)
