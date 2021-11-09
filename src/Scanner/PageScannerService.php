@@ -19,7 +19,7 @@ final class PageScannerService
 
     private $errors = [];
 
-    public static $appKernel;
+    public static ?KernelInterface $appKernel = null;
 
     /** @required */
     public LinkedDocsScanner $linkedDocsScanner;
