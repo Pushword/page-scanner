@@ -66,8 +66,8 @@ final class PageScannerService
         if ($response->isRedirect()) {
             // todo: log: not normal, it must be caught before by doctrine
             return '';
-        } elseif (200 != $response->getStatusCode()) {
-            file_put_contents('debug', $response);
+        }
+        if (false === $response->getContent() || 200 != $response->getStatusCode()) {
             $this->addError($page, 'error occured generating the page ('.$response->getStatusCode().')');
 
             return '';
