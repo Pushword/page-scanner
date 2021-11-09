@@ -19,8 +19,6 @@ final class PageScannerService
 
     private $errors = [];
 
-    public static ?KernelInterface $appKernel = null;
-
     /** @required */
     public LinkedDocsScanner $linkedDocsScanner;
 
@@ -35,7 +33,7 @@ final class PageScannerService
         $this->router->setUseCustomHostPath(false);
 
         static::loadKernel($kernel);
-        static::$appKernel->getContainer()->get('pushword.router')->setUseCustomHostPath(false);
+        static::getKernel()->getContainer()->get('pushword.router')->setUseCustomHostPath(false);
     }
 
     private function resetErrors()
@@ -61,7 +59,7 @@ final class PageScannerService
     private function getHtml(PageInterface $page, string $liveUri): string
     {
         $request = Request::create($liveUri);
-        $response = static::$appKernel->handle($request);
+        $response = static::getKernel()->handle($request);
 
         if ($response->isRedirect()) {
             // todo: log: not normal, it must be caught before by doctrine
