@@ -73,7 +73,7 @@ final class PageScannerService
             return '';
         }
 
-        return $response->getContent();
+        return (string) $response->getContent();
     }
 
     private function addErrors(PageInterface $page, array $messages): void
