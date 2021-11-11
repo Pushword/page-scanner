@@ -7,6 +7,7 @@ use Pushword\Core\Router\RouterInterface as PwRouter;
 use Pushword\Core\Utils\GenerateLivePathForTrait;
 use Pushword\Core\Utils\KernelTrait;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
@@ -65,7 +66,7 @@ final class PageScannerService
             // todo: log: not normal, it must be caught before by doctrine
             return '';
         }
-        if (false === $response->getContent() || 200 != $response->getStatusCode()) {
+        if (false === $response->getContent() || Response::HTTP_OK != $response->getStatusCode()) {
             $this->addError($page, 'error occured generating the page ('.$response->getStatusCode().')');
 
             return '';

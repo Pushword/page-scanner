@@ -16,6 +16,8 @@ use Symfony\Component\Lock\Store\FlockStore;
 
 class PageScannerCommand extends Command
 {
+    protected static $defaultName = 'pushword:page-scanner:scan';
+
     private \Symfony\Component\Filesystem\Filesystem $filesystem;
 
     private \Pushword\PageScanner\Scanner\PageScannerService $scanner;
@@ -41,9 +43,7 @@ class PageScannerCommand extends Command
 
     protected function configure()
     {
-        $this
-            ->setName('pushword:page-scanner:scan')
-            ->setDescription('Find dead links, 404, 301 and more in your content.')
+        $this->setDescription('Find dead links, 404, 301 and more in your content.')
             ->addArgument('host', InputArgument::OPTIONAL, '');
     }
 
