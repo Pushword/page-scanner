@@ -74,7 +74,7 @@ class PageScannerCommand extends Command
             $scan = $this->scanner->scan($page);
             if (true !== $scan) {
                 $errors[$page->getId()] = $scan;
-                $errorNbr = $errorNbr + \count($errors[$page->getId()]);
+                $errorNbr += \count($errors[$page->getId()]);
             }
 
             if ($errorNbr > 500) {

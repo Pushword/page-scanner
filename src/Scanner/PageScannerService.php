@@ -49,7 +49,7 @@ final class PageScannerService
     {
         $this->resetErrors();
 
-        $pageHtml = ! $page->hasRedirection() ? $this->getHtml($page, $this->generateLivePathFor($page)) : '';
+        $pageHtml = $page->hasRedirection() ? '' : $this->getHtml($page, $this->generateLivePathFor($page));
 
         $this->addErrors($page, $this->linkedDocsScanner->scan($page, $pageHtml));
         $this->addErrors($page, $this->parentPageScanner->scan($page, $pageHtml));

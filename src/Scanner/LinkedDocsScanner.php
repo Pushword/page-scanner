@@ -42,7 +42,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
         // 2. Je récupère tout les liens et je les check
         // href="", data-rot="" data-img="", src="", data-bg
-        if ($this->pageHtml) {
+        if ('' !== $this->pageHtml && '0' !== $this->pageHtml) {
             $this->checkLinkedDocs($this->getLinkedDocs());
         }
     }
@@ -74,7 +74,7 @@ final class LinkedDocsScanner extends AbstractScanner
         for ($k = 0; $k < $matchesCount; ++$k) {
             $uri = $matches[4][$k] ?: $matches[5][$k];
             $uri = 'data-rot' == $matches[1][$k] ? AppExtension::decrypt($uri) : $uri;
-            $uri = $uri.($matches[4][$k] ? '' : '#(encrypt)'); // not elegant but permit to remember it's an encrypted link
+            $uri .= $matches[4][$k] ? '' : '#(encrypt)'; // not elegant but permit to remember it's an encrypted link
             if (self::isMailtoOrTelLink($uri) && 'data-rot' != $matches[1][$k]) {
                 $this->addError('<code>'.$uri.'</code> '.$this->trans('page_scan.encrypt_mail'));
             } elseif ('' !== $uri && self::isWebLink($uri)) {
@@ -87,11 +87,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private static function isMailtoOrTelLink(string $uri): bool
     {
-        if (false !== strpos($uri, 'tel:') || false !== strpos($uri, 'mailto:')) {
-            return true;
-        }
-
-        return false;
+        return false !== strpos($uri, 'tel:') || false !== strpos($uri, 'mailto:');
     }
 
     private function removeParameters($url)
@@ -167,19 +163,15 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private function patchUnreachableDomain(string $url): bool
     {
-        return \Safe\preg_match('/^https:\/\/(www)?\.?(example.tld|instagram.com)/i', $url)
-            ? true : false;
+        return (bool) \Safe\preg_match('/^https:\/\/(www)?\.?(example.tld|instagram.com)/i', $url);
     }
 
     private function targetExist($target): bool
     {
         // todo: prefer a dom explorer
         $regex = '/ (?:id|name)=(["\'])(?:[^\1]* |)'.preg_quote($target, '/').'(?: [^\1]*\1|\1)/Ui';
-        if (false !== preg_match($regex, $this->pageHtml)) {
-            return true;
-        }
 
-        return false;
+        return false !== preg_match($regex, $this->pageHtml);
     }
 
     /**
@@ -226,12 +218,12 @@ final class LinkedDocsScanner extends AbstractScanner
 
         $checkDatabase = 0 !== strpos($slug, 'media/'); // we avoid to check in db the media, file exists is enough
 
-        $page = true !== $checkDatabase ? null :
-            Repository::getPageRepository($this->entityManager, \get_class($this->page))
-                ->getPage($slug, $this->page->getHost(), true);
+        $page = $checkDatabase ? Repository::getPageRepository($this->entityManager, \get_class($this->page))
+            ->getPage($slug, $this->page->getHost(), true) :
+            null;
 
         $this->everChecked[$slug] = (
-            null === $page
+            ! $page instanceof \Pushword\Core\Entity\PageInterface
                 && ! file_exists($this->publicDir.'/'.$slug)
                 && ! file_exists($this->publicDir.'/../'.$slug)
                 && 'feed.xml' !== $slug

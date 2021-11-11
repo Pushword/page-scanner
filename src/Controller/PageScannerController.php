@@ -56,7 +56,7 @@ final class PageScannerController extends AbstractController
         }
 
         $lastTime = new LastTime(self::$fileCache);
-        if ($force || false === $lastTime->wasRunSince(new DateInterval($this->pageScanInterval))) {
+        if ($force || ! $lastTime->wasRunSince(new DateInterval($this->pageScanInterval))) {
             exec('cd ../ && php bin/console pushword:page-scanner:scan > /dev/null 2>/dev/null &');
             $newRunLaunched = true;
             $lastTime->setWasRun('now', false);
