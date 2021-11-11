@@ -27,16 +27,16 @@ class PageScannerCommand extends Command
     private \Doctrine\ORM\EntityManagerInterface $em;
 
     public function __construct(
-        PageScannerService $scanner,
+        PageScannerService $pageScannerService,
         Filesystem $filesystem,
-        EntityManagerInterface $em,
+        EntityManagerInterface $entityManager,
         string $pageClass,
         string $varDir
     ) {
         parent::__construct();
-        $this->scanner = $scanner;
+        $this->scanner = $pageScannerService;
         $this->pageClass = $pageClass;
-        $this->em = $em;
+        $this->em = $entityManager;
         $this->filesystem = $filesystem;
         PageScannerController::setFileCache($varDir);
     }

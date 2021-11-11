@@ -123,12 +123,12 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private function checkLinkedDocs(array $linkedDocs): void
     {
-        foreach ($linkedDocs as $uri) {
+        foreach ($linkedDocs as $linkedDoc) {
             ++$this->linksCheckedCounter;
-            if (! \is_string($uri)) {
+            if (! \is_string($linkedDoc)) {
                 continue; // TODO Log ?!
             }
-            $this->checkLinkedDoc($uri);
+            $this->checkLinkedDoc($linkedDoc);
         }
     }
 

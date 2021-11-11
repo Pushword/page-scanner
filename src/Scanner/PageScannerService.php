@@ -27,10 +27,10 @@ final class PageScannerService
     public ParentPageScanner $parentPageScanner;
 
     public function __construct(
-        PwRouter $router, // required for GenerateLivePathForTrait
+        PwRouter $pwRouter, // required for GenerateLivePathForTrait
         KernelInterface $kernel // required for KernelTrait
     ) {
-        $this->router = $router;
+        $this->router = $pwRouter;
         $this->router->setUseCustomHostPath(false);
 
         static::loadKernel($kernel);
