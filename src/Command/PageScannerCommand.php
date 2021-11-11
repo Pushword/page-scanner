@@ -16,13 +16,13 @@ use Symfony\Component\Lock\Store\FlockStore;
 
 class PageScannerCommand extends Command
 {
-    private $filesystem;
+    private \Symfony\Component\Filesystem\Filesystem $filesystem;
 
-    private $scanner;
+    private \Pushword\PageScanner\Scanner\PageScannerService $scanner;
 
-    private $pageClass;
+    private string $pageClass;
 
-    private $em;
+    private \Doctrine\ORM\EntityManagerInterface $em;
 
     public function __construct(
         PageScannerService $scanner,

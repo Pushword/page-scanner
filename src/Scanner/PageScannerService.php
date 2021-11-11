@@ -17,7 +17,7 @@ final class PageScannerService
     use GenerateLivePathForTrait;
     use KernelTrait;
 
-    private $errors = [];
+    private array $errors = [];
 
     /** @required */
     public LinkedDocsScanner $linkedDocsScanner;

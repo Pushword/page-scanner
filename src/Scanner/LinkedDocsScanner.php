@@ -12,9 +12,9 @@ use Pushword\Core\Twig\AppExtension;
  */
 final class LinkedDocsScanner extends AbstractScanner
 {
-    private $everChecked = [];
+    private array $everChecked = [];
 
-    private $linksCheckedCounter = 0;
+    private int $linksCheckedCounter = 0;
 
     private $previousRequest;
 
