@@ -48,8 +48,8 @@ final class PageScannerController extends AbstractController
     public function scanAction($force = 0): Response
     {
         if ($this->filesystem->exists(self::$fileCache)) {
-            $errors = unserialize(file_get_contents(self::$fileCache));
-            $lastEdit = filemtime(self::$fileCache);
+            $errors = unserialize(\Safe\file_get_contents(self::$fileCache));
+            $lastEdit = \Safe\filemtime(self::$fileCache);
         } else {
             $lastEdit = 0;
             $errors = [];

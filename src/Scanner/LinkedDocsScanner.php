@@ -60,14 +60,14 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private static function isWebLink(string $url)
     {
-        return preg_match('@^((?:(http:|https:)//([\w\d-]+\.)+[\w\d-]+){0,1}(/?[\w~,;\-\./?%&+#=]*))$@', $url);
+        return \Safe\preg_match('@^((?:(http:|https:)//([\w\d-]+\.)+[\w\d-]+){0,1}(/?[\w~,;\-\./?%&+#=]*))$@', $url);
     }
 
     private function getLinkedDocs(): array
     {
         $urlInAttributes = ' '.self::prepareForRegex(['href', 'data-rot', 'src', 'data-img', 'data-bg']);
         $regex = '/'.$urlInAttributes.'=((["\'])([^\3]+)\3|([^\s>]+)[\s>])/iU';
-        preg_match_all($regex, $this->pageHtml, $matches);
+        \Safe\preg_match_all($regex, $this->pageHtml, $matches);
 
         $linkedDocs = [];
         $matchesCount = \count($matches[0]);
@@ -97,11 +97,11 @@ final class LinkedDocsScanner extends AbstractScanner
     private function removeParameters($url)
     {
         if (false !== strpos($url, '?')) {
-            $url = preg_replace('/(\?.*)$/', '', $url);
+            $url = \Safe\preg_replace('/(\?.*)$/', '', $url);
         }
 
         if (false !== strpos($url, '#')) {
-            $url = preg_replace('/(#.*)$/', '', $url);
+            $url = \Safe\preg_replace('/(#.*)$/', '', $url);
         }
 
         return $url;
@@ -110,7 +110,7 @@ final class LinkedDocsScanner extends AbstractScanner
     private function removeBase($url)
     {
         if ($this->page->getHost() && 0 === strpos($url, 'https://'.$this->page->getHost())) {
-            return substr($url, \strlen('https://'.$this->page->getHost()));
+            return \Safe\substr($url, \strlen('https://'.$this->page->getHost()));
         }
 
         return $url;
@@ -155,7 +155,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
         // anchor/bookmark/jump link
         if (0 === strpos($url, '#')) {
-            if (! $this->targetExist(substr($url, 1))) {
+            if (! $this->targetExist(\Safe\substr($url, 1))) {
                 $this->addError('<code>'.$url.'</code> target not found');
             }
 
@@ -167,7 +167,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private function patchUnreachableDomain(string $url): bool
     {
-        return preg_match('/^https:\/\/(www)?\.?(example.tld|instagram.com)/i', $url)
+        return \Safe\preg_match('/^https:\/\/(www)?\.?(example.tld|instagram.com)/i', $url)
             ? true : false;
     }
 
