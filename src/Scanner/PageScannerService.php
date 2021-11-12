@@ -66,6 +66,7 @@ final class PageScannerService
             // todo: log: not normal, it must be caught before by doctrine
             return '';
         }
+
         if (false === $response->getContent() || Response::HTTP_OK != $response->getStatusCode()) {
             $this->addError($page, 'error occured generating the page ('.$response->getStatusCode().')');
 

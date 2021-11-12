@@ -30,7 +30,7 @@ final class LinkedDocsScanner extends AbstractScanner
         $this->entityManager = $entityManager;
     }
 
-    public function run(): void
+    protected function run(): void
     {
         $this->linksCheckedCounter = 0;
 
@@ -124,6 +124,7 @@ final class LinkedDocsScanner extends AbstractScanner
             if (! \is_string($linkedDoc)) {
                 continue; // TODO Log ?!
             }
+
             $this->checkLinkedDoc($linkedDoc);
         }
     }
