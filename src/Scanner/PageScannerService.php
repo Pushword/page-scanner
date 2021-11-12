@@ -37,13 +37,13 @@ final class PageScannerService
         static::getKernel()->getContainer()->get('pushword.router')->setUseCustomHostPath(false);
     }
 
-    private function resetErrors()
+    private function resetErrors(): void
     {
         $this->errors = [];
     }
 
     /**
-     * @return true|array
+     * @return mixed[]|bool
      */
     public function scan(PageInterface $page)
     {

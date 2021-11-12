@@ -41,7 +41,7 @@ class PageScannerCommand extends Command
         PageScannerController::setFileCache($varDir);
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setDescription('Find dead links, 404, 301 and more in your content.')
             ->addArgument('host', InputArgument::OPTIONAL, '');

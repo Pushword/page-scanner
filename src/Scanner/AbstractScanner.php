@@ -24,6 +24,9 @@ abstract class AbstractScanner
         $this->errors[] = $msg;
     }
 
+    /**
+     * @return mixed[]
+     */
     public function scan(PageInterface $page, string $pageHtml): array
     {
         $this->errors = [];

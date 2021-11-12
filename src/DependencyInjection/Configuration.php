@@ -8,7 +8,9 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
 class Configuration implements ConfigurationInterface
 {
     //const DEFAULT_APP_FALLBACK = [ ];
-
+    /**
+     * @return \Symfony\Component\Config\Definition\Builder\TreeBuilder
+     */
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder('pushword_page_scanner');

@@ -47,6 +47,9 @@ final class LinkedDocsScanner extends AbstractScanner
         }
     }
 
+    /**
+     * @return string
+     */
     private static function prepareForRegex($var)
     {
         if (\is_string($var)) {
@@ -63,6 +66,9 @@ final class LinkedDocsScanner extends AbstractScanner
         return (bool) \Safe\preg_match('@^((?:(http:|https:)//([\w\d-]+\.)+[\w\d-]+){0,1}(/?[\w~,;\-\./?%&+#=]*))$@', $url);
     }
 
+    /**
+     * @return string[]
+     */
     private function getLinkedDocs(): array
     {
         $urlInAttributes = ' '.self::prepareForRegex(['href', 'data-rot', 'src', 'data-img', 'data-bg']);
@@ -103,7 +109,10 @@ final class LinkedDocsScanner extends AbstractScanner
         return $url;
     }
 
-    private function removeBase($url)
+    /**
+     * @return string
+     */
+    private function removeBase(string $url)
     {
         if ($this->page->getHost() && str_starts_with($url, 'https://'.$this->page->getHost())) {
             return \Safe\substr($url, \strlen('https://'.$this->page->getHost()));
@@ -167,7 +176,7 @@ final class LinkedDocsScanner extends AbstractScanner
         return (bool) \Safe\preg_match('/^https:\/\/(www)?\.?(example.tld|instagram.com)/i', $url);
     }
 
-    private function targetExist($target): bool
+    private function targetExist(string $target): bool
     {
         // todo: prefer a dom explorer
         $regex = '/ (?:id|name)=(["\'])(?:[^\1]* |)'.preg_quote($target, '/').'(?: [^\1]*\1|\1)/Ui';
@@ -178,7 +187,7 @@ final class LinkedDocsScanner extends AbstractScanner
     /**
      * this is really slow on big website.
      *
-     * @return true|string
+     * @return bool|mixed|string
      */
     private function urlExist(string $uri)
     {
