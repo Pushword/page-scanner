@@ -58,9 +58,9 @@ final class LinkedDocsScanner extends AbstractScanner
         return '('.implode('|', $var).')';
     }
 
-    private static function isWebLink(string $url)
+    private static function isWebLink(string $url): bool
     {
-        return \Safe\preg_match('@^((?:(http:|https:)//([\w\d-]+\.)+[\w\d-]+){0,1}(/?[\w~,;\-\./?%&+#=]*))$@', $url);
+        return (bool) \Safe\preg_match('@^((?:(http:|https:)//([\w\d-]+\.)+[\w\d-]+){0,1}(/?[\w~,;\-\./?%&+#=]*))$@', $url);
     }
 
     private function getLinkedDocs(): array
