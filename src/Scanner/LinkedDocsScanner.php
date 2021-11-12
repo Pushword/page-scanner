@@ -3,6 +3,7 @@
 namespace Pushword\PageScanner\Scanner;
 
 use Doctrine\ORM\EntityManagerInterface;
+use PiedWeb\Curl\Request;
 use PiedWeb\UrlHarvester\Harvest;
 use Pushword\Core\Repository\Repository;
 use Pushword\Core\Twig\AppExtension;
@@ -16,7 +17,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private int $linksCheckedCounter = 0;
 
-    private $previousRequest;
+    private ?Request $previousRequest = null;
 
     private EntityManagerInterface $entityManager;
 

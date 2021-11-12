@@ -16,6 +16,9 @@ use Symfony\Component\Lock\Store\FlockStore;
 
 class PageScannerCommand extends Command
 {
+    /**
+     * @var string
+     */
     protected static $defaultName = 'pushword:page-scanner:scan';
 
     private \Symfony\Component\Filesystem\Filesystem $filesystem;

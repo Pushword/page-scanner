@@ -19,7 +19,7 @@ final class PageScannerController extends AbstractController
 
     private string $pageScanInterval;
 
-    private static $fileCache;
+    private static ?string $fileCache = null;
 
     public function __construct(
         Filesystem $filesystem,
@@ -28,7 +28,7 @@ final class PageScannerController extends AbstractController
     ) {
         $this->filesystem = $filesystem;
         $this->pageScanInterval = $pageScanInterval;
-        $this->setFileCache($varDir);
+        self::setFileCache($varDir);
     }
 
     public static function setFileCache(string $varDir): void
