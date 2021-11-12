@@ -47,10 +47,7 @@ final class LinkedDocsScanner extends AbstractScanner
         }
     }
 
-    /**
-     * @return string
-     */
-    private static function prepareForRegex($var)
+    private static function prepareForRegex($var): string
     {
         if (\is_string($var)) {
             return preg_quote($var, '/');
@@ -96,7 +93,7 @@ final class LinkedDocsScanner extends AbstractScanner
         return str_contains($uri, 'tel:') || str_contains($uri, 'mailto:');
     }
 
-    private function removeParameters($url)
+    private function removeParameters(string $url)
     {
         if (str_contains($url, '?')) {
             $url = \Safe\preg_replace('/(\?.*)$/', '', $url);
@@ -109,10 +106,7 @@ final class LinkedDocsScanner extends AbstractScanner
         return $url;
     }
 
-    /**
-     * @return string
-     */
-    private function removeBase(string $url)
+    private function removeBase(string $url): string
     {
         if ($this->page->getHost() && str_starts_with($url, 'https://'.$this->page->getHost())) {
             return \Safe\substr($url, \strlen('https://'.$this->page->getHost()));
