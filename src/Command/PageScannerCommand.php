@@ -47,7 +47,7 @@ class PageScannerCommand extends Command
             ->addArgument('host', InputArgument::OPTIONAL, '');
     }
 
-    protected function scanAllWithLock(string $host)
+    protected function scanAllWithLock(string $host): bool
     {
         $lock = (new LockFactory(new FlockStore()))->createLock('page-scan');
         if ($lock->acquire()) {
@@ -63,7 +63,7 @@ class PageScannerCommand extends Command
         return false;
     }
 
-    protected function scanAll(string $host)
+    protected function scanAll(string $host): array
     {
         $pages = Repository::getPageRepository($this->em, $this->pageClass)->getPublishedPages($host);
 
@@ -85,7 +85,7 @@ class PageScannerCommand extends Command
         return $errors;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $output->writeln('Acquiring page scanner lock to start the scan...');
 
