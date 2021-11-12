@@ -87,16 +87,16 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private static function isMailtoOrTelLink(string $uri): bool
     {
-        return false !== strpos($uri, 'tel:') || false !== strpos($uri, 'mailto:');
+        return str_contains($uri, 'tel:') || str_contains($uri, 'mailto:');
     }
 
     private function removeParameters($url)
     {
-        if (false !== strpos($url, '?')) {
+        if (str_contains($url, '?')) {
             $url = \Safe\preg_replace('/(\?.*)$/', '', $url);
         }
 
-        if (false !== strpos($url, '#')) {
+        if (str_contains($url, '#')) {
             $url = \Safe\preg_replace('/(#.*)$/', '', $url);
         }
 
@@ -105,7 +105,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private function removeBase($url)
     {
-        if ($this->page->getHost() && 0 === strpos($url, 'https://'.$this->page->getHost())) {
+        if ($this->page->getHost() && str_starts_with($url, 'https://'.$this->page->getHost())) {
             return \Safe\substr($url, \strlen('https://'.$this->page->getHost()));
         }
 
@@ -141,7 +141,7 @@ final class LinkedDocsScanner extends AbstractScanner
         }
 
         // external
-        if (0 === strpos($url, 'http')) {
+        if (str_starts_with($url, 'http')) {
             if (! $this->patchUnreachableDomain($url) && true !== ($errorMsg = $this->urlExist($url))) {
                 $this->addError('<code>'.$url.'</code> '.$errorMsg);
             }
@@ -150,7 +150,7 @@ final class LinkedDocsScanner extends AbstractScanner
         }
 
         // anchor/bookmark/jump link
-        if (0 === strpos($url, '#')) {
+        if (str_starts_with($url, '#')) {
             if (! $this->targetExist(\Safe\substr($url, 1))) {
                 $this->addError('<code>'.$url.'</code> target not found');
             }
@@ -216,7 +216,7 @@ final class LinkedDocsScanner extends AbstractScanner
             return $this->everChecked[$slug];
         }
 
-        $checkDatabase = 0 !== strpos($slug, 'media/'); // we avoid to check in db the media, file exists is enough
+        $checkDatabase = ! str_starts_with($slug, 'media/'); // we avoid to check in db the media, file exists is enough
 
         $page = $checkDatabase ? Repository::getPageRepository($this->entityManager, \get_class($this->page))
             ->getPage($slug, $this->page->getHost(), true) :
