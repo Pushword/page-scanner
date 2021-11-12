@@ -7,6 +7,7 @@ use PiedWeb\Curl\Request;
 use PiedWeb\UrlHarvester\Harvest;
 use Pushword\Core\Repository\Repository;
 use Pushword\Core\Twig\AppExtension;
+use Pushword\Core\Utils\F;
 
 /**
  * Permit to find error in image or link.
@@ -94,14 +95,14 @@ final class LinkedDocsScanner extends AbstractScanner
         return str_contains($uri, 'tel:') || str_contains($uri, 'mailto:');
     }
 
-    private function removeParameters(string $url)
+    private function removeParameters(string $url): string
     {
         if (str_contains($url, '?')) {
-            $url = \Safe\preg_replace('/(\?.*)$/', '', $url);
+            $url = F::preg_replace_str('/(\?.*)$/', '', $url);
         }
 
         if (str_contains($url, '#')) {
-            $url = \Safe\preg_replace('/(#.*)$/', '', $url);
+            $url = F::preg_replace_str('/(#.*)$/', '', $url);
         }
 
         return $url;
