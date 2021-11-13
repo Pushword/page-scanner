@@ -3,6 +3,7 @@
 namespace Pushword\PageScanner\Command;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Pushword\Core\Entity\PageInterface;
 use Pushword\Core\Repository\Repository;
 use Pushword\PageScanner\Controller\PageScannerController;
 use Pushword\PageScanner\Scanner\PageScannerService;
@@ -25,10 +26,16 @@ class PageScannerCommand extends Command
 
     private \Pushword\PageScanner\Scanner\PageScannerService $scanner;
 
+    /**
+     * @var class-string<PageInterface>
+     */
     private string $pageClass;
 
     private \Doctrine\ORM\EntityManagerInterface $em;
 
+    /**
+     * @param class-string<PageInterface> $pageClass
+     */
     public function __construct(
         PageScannerService $pageScannerService,
         Filesystem $filesystem,
@@ -66,6 +73,9 @@ class PageScannerCommand extends Command
         return false;
     }
 
+    /**
+     * @return array<int, mixed[]>
+     */
     protected function scanAll(string $host): array
     {
         $pages = Repository::getPageRepository($this->em, $this->pageClass)->getPublishedPages($host);
@@ -76,7 +86,7 @@ class PageScannerCommand extends Command
         foreach ($pages as $page) {
             $scan = $this->scanner->scan($page);
             if (true !== $scan) {
-                $errors[$page->getId()] = $scan;
+                $errors[(int) $page->getId()] = $scan;
                 $errorNbr += \count($errors[$page->getId()]);
             }
 

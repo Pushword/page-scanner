@@ -18,6 +18,9 @@ final class PageScannerService
     use GenerateLivePathForTrait;
     use KernelTrait;
 
+    /**
+     * @var mixed[]
+     */
     private array $errors = [];
 
     /** @required */
@@ -43,7 +46,7 @@ final class PageScannerService
     }
 
     /**
-     * @return mixed[]|bool
+     * @return mixed[]|true
      */
     public function scan(PageInterface $page)
     {
@@ -77,6 +80,9 @@ final class PageScannerService
         return $response->getContent();
     }
 
+    /**
+     * @param string[] $messages
+     */
     private function addErrors(PageInterface $page, array $messages): void
     {
         foreach ($messages as $message) {

@@ -14,6 +14,9 @@ use Pushword\Core\Utils\F;
  */
 final class LinkedDocsScanner extends AbstractScanner
 {
+    /**
+     * @var array<string, bool>
+     */
     private array $everChecked = [];
 
     private int $linksCheckedCounter = 0;
@@ -24,6 +27,9 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private string $publicDir;
 
+    /**
+     * @var array<string, mixed>
+     */
     private array $urlExistCache = [];
 
     public function __construct(EntityManagerInterface $entityManager, string $publicDir)
@@ -49,13 +55,16 @@ final class LinkedDocsScanner extends AbstractScanner
         }
     }
 
+    /**
+     * @param string|string[] $var
+     */
     private static function prepareForRegex($var): string
     {
         if (\is_string($var)) {
             return preg_quote($var, '/');
         }
 
-        $var = array_map('static::prepareForRegex', $var);
+        $var = array_map('static::prepareForRegex', $var); // @phpstan-ignore-line
 
         return '('.implode('|', $var).')';
     }
@@ -77,7 +86,7 @@ final class LinkedDocsScanner extends AbstractScanner
         $linkedDocs = [];
         $matchesCount = \count($matches[0]);
         for ($k = 0; $k < $matchesCount; ++$k) {
-            $uri = $matches[4][$k] ?: $matches[5][$k];
+            $uri = isset($matches[4][$k]) ? $matches[4][$k] : $matches[5][$k];
             $uri = 'data-rot' == $matches[1][$k] ? AppExtension::decrypt($uri) : $uri;
             $uri .= $matches[4][$k] ? '' : '#(encrypt)'; // not elegant but permit to remember it's an encrypted link
             if (self::isMailtoOrTelLink($uri) && 'data-rot' != $matches[1][$k]) {
@@ -110,7 +119,7 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private function removeBase(string $url): string
     {
-        if ($this->page->getHost() && str_starts_with($url, 'https://'.$this->page->getHost())) {
+        if ('' !== $this->page->getHost() && str_starts_with($url, 'https://'.$this->page->getHost())) {
             return \Safe\substr($url, \strlen('https://'.$this->page->getHost()));
         }
 
@@ -122,6 +131,9 @@ final class LinkedDocsScanner extends AbstractScanner
         return $this->linksCheckedCounter;
     }
 
+    /**
+     * @param array<mixed> $linkedDocs
+     */
     private function checkLinkedDocs(array $linkedDocs): void
     {
         foreach ($linkedDocs as $linkedDoc) {

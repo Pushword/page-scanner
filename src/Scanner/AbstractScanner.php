@@ -14,6 +14,9 @@ abstract class AbstractScanner
 
     protected string $pageHtml;
 
+    /**
+     * @var string[]
+     */
     protected array $errors = [];
 
     /** @required */
@@ -25,7 +28,7 @@ abstract class AbstractScanner
     }
 
     /**
-     * @return mixed[]
+     * @return string[]
      */
     public function scan(PageInterface $page, string $pageHtml): array
     {
@@ -40,6 +43,11 @@ abstract class AbstractScanner
 
     abstract protected function run(): void;
 
+    /**
+     * Undocumented function.
+     *
+     * @param mixed[] $parameters
+     */
     public function trans(string $id, array $parameters = [], string $domain = null, string $locale = null): string
     {
         return $this->translator->trans($id, $parameters, $domain, $locale);

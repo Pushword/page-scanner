@@ -4,6 +4,7 @@ namespace Pushword\PageScanner\Controller;
 
 use DateInterval;
 use Exception;
+use LogicException;
 use Pushword\Core\Utils\LastTime;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -45,8 +46,14 @@ final class PageScannerController extends AbstractController
         return self::$fileCache;
     }
 
-    public function scanAction($force = 0): Response
+    public function scanAction(int $force = 0): Response
     {
+        $force = (bool) $force;
+
+        if (null === self::$fileCache) {
+            throw new LogicException();
+        }
+
         if ($this->filesystem->exists(self::$fileCache)) {
             $errors = unserialize(\Safe\file_get_contents(self::$fileCache));
             $lastEdit = \Safe\filemtime(self::$fileCache);
