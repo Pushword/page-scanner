@@ -17,7 +17,7 @@ use Symfony\Component\Lock\Store\FlockStore;
 class PageScannerCommand extends Command
 {
     /**
-     * @var string
+     * @var string|null
      */
     protected static $defaultName = 'pushword:page-scanner:scan';
 

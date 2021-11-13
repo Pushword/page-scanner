@@ -33,7 +33,7 @@ final class PageScannerController extends AbstractController
 
     public static function setFileCache(string $varDir): void
     {
-        self::$fileCache = self::$fileCache ?: $varDir.'/page-scan';
+        self::$fileCache = null !== self::$fileCache && '' !== self::$fileCache ? self::$fileCache : $varDir.'/page-scan';
     }
 
     public static function fileCache(): string

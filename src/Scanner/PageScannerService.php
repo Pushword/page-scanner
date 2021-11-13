@@ -54,7 +54,7 @@ final class PageScannerService
         $this->addErrors($page, $this->linkedDocsScanner->scan($page, $pageHtml));
         $this->addErrors($page, $this->parentPageScanner->scan($page, $pageHtml));
 
-        return empty($this->errors) ? true : $this->errors;
+        return [] === $this->errors ? true : $this->errors;
     }
 
     private function getHtml(PageInterface $page, string $liveUri): string
@@ -73,7 +73,8 @@ final class PageScannerService
             return '';
         }
 
-        return (string) $response->getContent();
+        /** @psalm-suppress FalsableReturnStatement */
+        return $response->getContent();
     }
 
     private function addErrors(PageInterface $page, array $messages): void
