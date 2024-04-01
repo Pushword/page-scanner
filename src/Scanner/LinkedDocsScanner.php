@@ -7,18 +7,19 @@ use PiedWeb\Curl\ExtendedClient;
 use PiedWeb\Curl\Helper;
 use PiedWeb\Extractor\CanonicalExtractor;
 use PiedWeb\Extractor\Url;
-use Pushword\Core\Entity\PageInterface;
-use Pushword\Core\Repository\Repository;
-use Pushword\Core\Twig\AppExtension;
-use Pushword\Core\Utils\F;
+use Pushword\Core\Entity\Page;
+use Pushword\Core\Service\LinkProvider;
 
 use function Safe\preg_match;
 use function Safe\preg_match_all;
 
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Permit to find error in image or link.
+ *
+ * @psalm-suppress PropertyNotSetInConstructor
  */
 final class LinkedDocsScanner extends AbstractScanner
 {
@@ -33,7 +34,7 @@ final class LinkedDocsScanner extends AbstractScanner
     private array $toIgnore = [];
 
     /**
-     * @var array<string, mixed>
+     * @var array<string, string|true>
      */
     private array $urlExistCache = [];
 
@@ -43,18 +44,19 @@ final class LinkedDocsScanner extends AbstractScanner
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly array $linksToIgnore,
-        private readonly string $publicDir
+        private readonly string $publicDir,
+        TranslatorInterface $translator,
     ) {
+        parent::__construct($translator);
     }
 
     /**
-     * @return string[]
+     * @return array<string>
      */
     private function getPageScanLinksToIgnore(): array
     {
-        $pageScanLinksToIgnore = $this->page->getCustomProperty('pageScanLinksToIgnore') ?? [];
-
-        return \is_array($pageScanLinksToIgnore) ? $pageScanLinksToIgnore : [];
+        return $this->page->hasCustomProperty('pageScanLinksToIgnore')
+            ? $this->page->getCustomPropertyList('pageScanLinksToIgnore') : [];
     }
 
     // Starting point called from AbstractSanner::scan
@@ -104,6 +106,8 @@ final class LinkedDocsScanner extends AbstractScanner
 
     /**
      * @return string[]
+     *
+     * @psalm-suppress all
      */
     private function getLinkedDocs(): array
     {
@@ -111,11 +115,15 @@ final class LinkedDocsScanner extends AbstractScanner
         $regex = '/'.$urlInAttributes.'=((["\'])([^\3]+)\3|([^\s>]+)[\s>])/iU';
         preg_match_all($regex, $this->pageHtml, $matches);
 
+        if (null === $matches) {
+            throw new \Exception();
+        }
+
         $linkedDocs = [];
         $matchesCount = is_countable($matches[0]) ? \count($matches[0]) : 0;
         for ($k = 0; $k < $matchesCount; ++$k) {
             $uri = $matches[4][$k] ?? $matches[5][$k];
-            $uri = 'data-rot' == $matches[1][$k] ? AppExtension::decrypt($uri) : $uri;
+            $uri = 'data-rot' == $matches[1][$k] ? LinkProvider::decrypt($uri) : $uri;
             $uri .= $matches[4][$k] ? '' : '#(encrypt)'; // not elegant but permit to remember it's an encrypted link
             if ($this->isMailtoOrTelLink($uri) && 'data-rot' != $matches[1][$k]) {
                 $this->addError('<code>'.$uri.'</code> '.$this->trans('page_scan.encrypt_mail'));
@@ -135,11 +143,11 @@ final class LinkedDocsScanner extends AbstractScanner
     private function removeParameters(string $url): string
     {
         if (str_contains($url, '?')) {
-            $url = F::preg_replace_str('/(\?.*)$/', '', $url);
+            $url = preg_replace('/(\?.*)$/', '', $url) ?? throw new \Exception();
         }
 
         if (str_contains($url, '#')) {
-            return F::preg_replace_str('/(#.*)$/', '', $url);
+            return preg_replace('/(#.*)$/', '', $url) ?? throw new \Exception();
         }
 
         return $url;
@@ -200,10 +208,10 @@ final class LinkedDocsScanner extends AbstractScanner
             return;
         }
 
-        if ('/' == $uri[0]) {
+        if ('/' === $uri[0]) {
             if (! $this->uriExist($this->removeParameters($uri))) {
                 $this->addError('<code>'.$url.'</code> '.$this->trans('page_scan.not_found'));
-            } elseif ($checkRedirection && $this->lastPageChecked instanceof PageInterface && $this->lastPageChecked->hasRedirection()) {
+            } elseif ($checkRedirection && $this->lastPageChecked instanceof Page && $this->lastPageChecked->hasRedirection()) {
                 $this->addError('<code>'.$url.'</code> '.$this->trans('page_scan.is_redirection'));
             }
 
@@ -255,7 +263,7 @@ final class LinkedDocsScanner extends AbstractScanner
     /**
      * this is really slow on big website.
      *
-     * @return bool|mixed|string
+     * @return true|string
      */
     private function urlExist(string $url)
     {
@@ -275,7 +283,10 @@ final class LinkedDocsScanner extends AbstractScanner
         $client->request();
 
         if (200 !== $client->getCurlInfo(\CURLINFO_HTTP_CODE) && 0 !== $client->getCurlInfo(\CURLINFO_HTTP_CODE)) {
-            return $this->urlExistCache[$url] = $this->trans('page_scan.status_code').' ('.$client->getCurlInfo(\CURLINFO_HTTP_CODE).')';
+            /** @var string */
+            $httpCode = $client->getCurlInfo(\CURLINFO_HTTP_CODE);
+
+            return $this->urlExistCache[$url] = $this->trans('page_scan.status_code').' ('.$httpCode.')';
         }
 
         if ($client->getError() > 0) {
@@ -287,13 +298,13 @@ final class LinkedDocsScanner extends AbstractScanner
 
         $canonical = new CanonicalExtractor(new Url($url), new DomCrawler($client->getResponse()->getBody()));
         if (! $canonical->ifCanonicalExistsIsItCorrectOrPartiallyCorrect()) {
-            return $this->urlExistCache[$url] = $this->trans('page_scan.canonical').' ('.$canonical->get().')';
+            return $this->urlExistCache[$url] = $this->trans('page_scan.canonical').' ('.($canonical->get() ?? 'null').')';
         }
 
         return $this->urlExistCache[$url] = true;
     }
 
-    private ?PageInterface $lastPageChecked = null;
+    private ?Page $lastPageChecked = null;
 
     private function uriExist(string $uri): bool
     {
@@ -307,12 +318,12 @@ final class LinkedDocsScanner extends AbstractScanner
 
         $checkDatabase = ! str_starts_with($slug, 'media/'); // we avoid to check in db the media, file exists is enough
 
-        $this->lastPageChecked = $checkDatabase ? Repository::getPageRepository($this->entityManager, $this->page::class)
+        $this->lastPageChecked = $checkDatabase ? $this->entityManager->getRepository(Page::class)
             ->getPage($slug, $this->page->getHost(), true) :
             null;
 
         $this->everChecked[$slug] = (
-            ! $this->lastPageChecked instanceof PageInterface
+            ! $this->lastPageChecked instanceof Page
                 && ! file_exists($this->publicDir.'/'.$slug)
                 && ! file_exists($this->publicDir.'/../'.$slug)
                 && 'feed.xml' !== $slug
