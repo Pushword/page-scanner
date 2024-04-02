@@ -3,6 +3,7 @@
 namespace Pushword\PageScanner\Scanner;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use PiedWeb\Curl\ExtendedClient;
 use PiedWeb\Curl\Helper;
 use PiedWeb\Extractor\CanonicalExtractor;
@@ -116,7 +117,7 @@ final class LinkedDocsScanner extends AbstractScanner
         preg_match_all($regex, $this->pageHtml, $matches);
 
         if (null === $matches) {
-            throw new \Exception();
+            throw new Exception();
         }
 
         $linkedDocs = [];
@@ -143,11 +144,11 @@ final class LinkedDocsScanner extends AbstractScanner
     private function removeParameters(string $url): string
     {
         if (str_contains($url, '?')) {
-            $url = preg_replace('/(\?.*)$/', '', $url) ?? throw new \Exception();
+            $url = preg_replace('/(\?.*)$/', '', $url) ?? throw new Exception();
         }
 
         if (str_contains($url, '#')) {
-            return preg_replace('/(#.*)$/', '', $url) ?? throw new \Exception();
+            return preg_replace('/(#.*)$/', '', $url) ?? throw new Exception();
         }
 
         return $url;
