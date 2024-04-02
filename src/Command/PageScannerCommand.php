@@ -2,9 +2,7 @@
 
 namespace Pushword\PageScanner\Command;
 
-use Doctrine\ORM\EntityManagerInterface;
-use Pushword\Core\Entity\PageInterface;
-use Pushword\Core\Repository\Repository;
+use Pushword\Core\Repository\PageRepository;
 use Pushword\PageScanner\Controller\PageScannerController;
 use Pushword\PageScanner\Scanner\PageScannerService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,17 +15,13 @@ use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
 
 #[AsCommand(name: 'pushword:page-scanner:scan')]
-class PageScannerCommand extends Command
+final class PageScannerCommand extends Command
 {
-    /**
-     * @param class-string<PageInterface> $pageClass
-     */
     public function __construct(
         private readonly PageScannerService $scanner,
         private readonly Filesystem $filesystem,
-        private readonly EntityManagerInterface $em,
-        private readonly string $pageClass,
-        string $varDir
+        private readonly PageRepository $pageRepo,
+        string $varDir,
     ) {
         parent::__construct();
         PageScannerController::setFileCache($varDir);
@@ -60,7 +54,7 @@ class PageScannerCommand extends Command
      */
     protected function scanAll(string $host): array
     {
-        $pages = Repository::getPageRepository($this->em, $this->pageClass)->getPublishedPages($host);
+        $pages = $this->pageRepo->getPublishedPages($host);
 
         $errors = [];
         $errorNbr = 0;
@@ -68,8 +62,9 @@ class PageScannerCommand extends Command
         foreach ($pages as $page) {
             $scan = $this->scanner->scan($page);
             if (true !== $scan) {
-                $errors[(int) $page->getId()] = $scan;
-                $errorNbr += \count($errors[$page->getId()]);
+                $pageId = (int) $page->getId();
+                $errors[$pageId] = $scan;
+                $errorNbr += \count($errors[$pageId]);
             }
 
             if ($errorNbr > 500) {
