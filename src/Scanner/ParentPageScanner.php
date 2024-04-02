@@ -2,29 +2,22 @@
 
 namespace Pushword\PageScanner\Scanner;
 
-use Pushword\Core\Entity\Page;
-use Symfony\Contracts\Translation\TranslatorInterface;
+use Pushword\Core\Entity\PageInterface;
 
 /**
  * Permit to find error in image or link.
  */
 final class ParentPageScanner extends AbstractScanner
 {
-    public function __construct(
-        TranslatorInterface $translator,
-    ) {
-        parent::__construct($translator);
-    }
-
     protected function run(): void
     {
         $this->checkParentPageHost($this->page);
     }
 
-    private function checkParentPageHost(Page $Page): void
+    private function checkParentPageHost(PageInterface $pageinterface): void
     {
-        $parent = $Page->getParentPage();
-        if (! $parent instanceof Page) {
+        $parent = $pageinterface->getParentPage();
+        if (! $parent instanceof PageInterface) {
             return;
         }
 
@@ -32,15 +25,15 @@ final class ParentPageScanner extends AbstractScanner
             return;
         }
 
-        if ('' === $Page->getHost()) {
+        if ('' === $pageinterface->getHost()) {
             return;
         }
 
-        if ($Page->getHost() === $parent->getHost()) {
+        if ($pageinterface->getHost() === $parent->getHost()) {
             return;
         }
 
         $this->addError($this->trans('page_scan.different_host')
-            .' : <code>'.$parent->getHost().'</code> vs <code>'.$Page->getHost().'</code>');
+            .' : <code>'.$parent->getHost().'</code> vs <code>'.$pageinterface->getHost().'</code>');
     }
 }

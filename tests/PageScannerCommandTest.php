@@ -8,7 +8,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class PageScannerCommandTest extends KernelTestCase
 {
-    public function testPageScannerCommand(): void
+    public function testPageScannerCommand()
     {
         $kernel = self::createKernel();
         $application = new Application($kernel);
@@ -19,6 +19,6 @@ class PageScannerCommandTest extends KernelTestCase
 
         // the output of the command in the console
         $output = $commandTester->getDisplay();
-        self::assertTrue(str_contains($output, 'done...'));
+        $this->assertTrue(str_contains($output, 'done...'));
     }
 }

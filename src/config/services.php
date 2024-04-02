@@ -15,6 +15,7 @@ return static function (ContainerConfigurator $containerConfigurator): void {
         ->autoconfigure()
         ->bind('$publicDir', '%pw.public_dir%')
         ->bind('$kernel', service('kernel'))
+        ->bind('$pageClass', '%pw.entity_page%')
         ->bind('$varDir', '%kernel.project_dir%/var')
         ->bind('$pageScanInterval', '%pw.pushword_page_scanner.min_interval_between_scan%')
         ->bind('$linksToIgnore', '%pw.pushword_page_scanner.links_to_ignore%');

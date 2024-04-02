@@ -6,13 +6,13 @@ use Pushword\Admin\Tests\AbstractAdminTestClass;
 
 class PageScannerControllerTest extends AbstractAdminTestClass
 {
-    public function testAdmin(): void
+    public function testAdmin()
     {
         $client = $this->loginUser();
 
         $client->catchExceptions(false);
 
         $client->request('GET', '/admin/page/scan');
-        self::assertResponseIsSuccessful();
+        $this->assertResponseIsSuccessful();
     }
 }

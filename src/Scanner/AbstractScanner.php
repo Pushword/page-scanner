@@ -2,7 +2,8 @@
 
 namespace Pushword\PageScanner\Scanner;
 
-use Pushword\Core\Entity\Page;
+use Pushword\Core\Entity\PageInterface;
+use Symfony\Contracts\Service\Attribute\Required;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -10,10 +11,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 abstract class AbstractScanner
 {
-    /** @psalm-suppress PropertyNotSetInConstructor defined on init */
-    protected Page $page;
+    protected PageInterface $page;
 
-    /** @psalm-suppress PropertyNotSetInConstructor defined on init */
     protected string $pageHtml;
 
     /**
@@ -21,10 +20,8 @@ abstract class AbstractScanner
      */
     protected array $errors = [];
 
-    public function __construct(
-        protected readonly TranslatorInterface $translator
-    ) {
-    }
+    #[Required]
+    public TranslatorInterface $translator;
 
     public function addError(string $msg): void
     {
@@ -34,7 +31,7 @@ abstract class AbstractScanner
     /**
      * @return string[]
      */
-    public function scan(Page $page, string $pageHtml): array
+    public function scan(PageInterface $page, string $pageHtml): array
     {
         $this->errors = [];
         $this->page = $page;

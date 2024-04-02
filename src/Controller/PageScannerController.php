@@ -2,9 +2,6 @@
 
 namespace Pushword\PageScanner\Controller;
 
-use DateInterval;
-use Exception;
-use LogicException;
 use Pushword\Core\Utils\LastTime;
 
 use function Safe\file_get_contents;
@@ -36,7 +33,7 @@ final class PageScannerController extends AbstractController
     public static function fileCache(): string
     {
         if (! \is_string(self::$fileCache)) {
-            throw new Exception('setFileCache($varDir) must be setted before call fileCache()');
+            throw new \Exception('setFileCache($varDir) must be setted before call fileCache()');
         }
 
         return self::$fileCache;
@@ -47,7 +44,7 @@ final class PageScannerController extends AbstractController
         $force = (bool) $force;
 
         if (null === self::$fileCache) {
-            throw new LogicException();
+            throw new \LogicException();
         }
 
         if ($this->filesystem->exists(self::$fileCache)) {
@@ -59,7 +56,7 @@ final class PageScannerController extends AbstractController
         }
 
         $lastTime = new LastTime(self::$fileCache);
-        if ($force || ! $lastTime->wasRunSince(new DateInterval($this->pageScanInterval))) {
+        if ($force || ! $lastTime->wasRunSince(new \DateInterval($this->pageScanInterval))) {
             exec('cd ../ && php bin/console pushword:page-scanner:scan > /dev/null 2>/dev/null &');
             $newRunLaunched = true;
             $lastTime->setWasRun('now', false);

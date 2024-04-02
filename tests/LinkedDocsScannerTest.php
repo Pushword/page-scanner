@@ -2,25 +2,22 @@
 
 namespace Pushword\PageScanner;
 
-use DateTime;
-use Pushword\Core\Entity\Page;
+use App\Entity\Page;
+use Pushword\Core\Entity\PageInterface;
 use Pushword\PageScanner\Scanner\LinkedDocsScanner;
-
-use function Safe\file_get_contents;
-
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class LinkedDocsScannerTest extends KernelTestCase
 {
-    public function testLinkedDocsScanner(): void
+    public function testLinkedDocsScanner()
     {
         self::bootKernel();
         $linkedDocsScanner = new LinkedDocsScanner(
-            self::getContainer()->get('doctrine.orm.default_entity_manager'),
+            self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager'),
             [],
             __DIR__.'/../../skeleton/public',
-            self::getContainer()->get('translator')
         );
+        $linkedDocsScanner->translator = self::$kernel->getContainer()->get('translator');
 
         $errors = $linkedDocsScanner->scan($this->getPage(), file_get_contents(__DIR__.'/data/page.html'));
 
@@ -31,19 +28,19 @@ class LinkedDocsScannerTest extends KernelTestCase
         ];
 
         foreach ($knowedErrors as $error) {
-            self::assertContains($error, $errors);
+            $this->assertContains($error, $errors);
         }
     }
 
-    public function getPage(): Page
+    public function getPage(): PageInterface
     {
         $page = (new Page())
             ->setH1('Welcome : this is your first page')
             ->setSlug('homepage')
             ->setLocale('en')
-            ->setCreatedAt(new DateTime('2 days ago'))
+            ->setCreatedAt(new \DateTime('2 days ago'))
+            ->setCustomProperty('pageScanLinksToIgnore', ['https://example2.tld/*'])
             ->setMainContent('...'); // \Safe\file_get_contents( __DIR__.'/../../skeleton/src/DataFixtures/WelcomePage.md')
-        $page->setCustomProperty('pageScanLinksToIgnore', ['https://example2.tld/*']);
 
         return $page;
     }
