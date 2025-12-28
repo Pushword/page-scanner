@@ -3,6 +3,10 @@
 namespace Pushword\PageScanner\Command;
 
 use Pushword\Core\Repository\PageRepository;
+use Pushword\Core\Service\BackgroundProcessManager;
+use Pushword\Core\Service\ProcessOutputStorage;
+use Pushword\Core\Service\SharedOutputInterface;
+use Pushword\Core\Service\TeeOutput;
 use Pushword\PageScanner\Controller\PageScannerController;
 use Pushword\PageScanner\Scanner\PageScannerService;
 use Pushword\PageScanner\Scanner\ParallelUrlChecker;
@@ -12,8 +16,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Lock\LockFactory;
-use Symfony\Component\Lock\Store\FlockStore;
+use Symfony\Component\Stopwatch\Stopwatch;
 
 #[AsCommand(
     name: 'pw:page-scan',
@@ -21,6 +24,10 @@ use Symfony\Component\Lock\Store\FlockStore;
 )]
 final class PageScannerCommand
 {
+    private const string PROCESS_TYPE = 'page-scanner';
+
+    private const string COMMAND_PATTERN = 'pw:page-scan';
+
     /**
      * @param string[] $errorsToIgnore
      */
@@ -29,26 +36,12 @@ final class PageScannerCommand
         private readonly Filesystem $filesystem,
         private readonly PageRepository $pageRepo,
         private readonly ParallelUrlChecker $parallelUrlChecker,
+        private readonly BackgroundProcessManager $processManager,
+        private readonly ProcessOutputStorage $outputStorage,
         private readonly array $errorsToIgnore,
         string $varDir,
     ) {
         PageScannerController::setFileCache($varDir);
-    }
-
-    protected function scanAllWithLock(string $host): bool
-    {
-        $lock = new LockFactory(new FlockStore())->createLock('page-scan');
-        if ($lock->acquire()) {
-            // sleep(30);
-            $errors = $this->scanAll($host);
-            // dd($errors);
-            $this->filesystem->dumpFile(PageScannerController::fileCache(), serialize($errors));
-            $lock->release();
-
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -56,7 +49,10 @@ final class PageScannerCommand
      */
     protected function scanAll(string $host): array
     {
+        $this->stopwatch?->start('preload.caches');
         $this->scanner->preloadCaches($host);
+        $this->stopwatch?->stop('preload.caches');
+
         $pages = $this->pageRepo->getPublishedPages($host);
         $pagesCount = \count($pages);
 
@@ -66,16 +62,39 @@ final class PageScannerCommand
 
         $errors = [];
         $errorNbr = 0;
+        $currentPage = 0;
 
         foreach ($pages as $page) {
+            ++$currentPage;
+            $pageSlug = $page->getSlug() ?: 'index';
+            $pageHost = $page->host ?? '';
+
+            $this->output?->writeln(\sprintf(
+                '[%d/%d] Scanning %s/%s',
+                $currentPage,
+                $pagesCount,
+                $pageHost,
+                $pageSlug,
+            ));
+
+            $this->stopwatch?->start('scanPage');
             $scan = $this->scanner->scan($page);
+            $event = $this->stopwatch?->stop('scanPage');
+
+            if (null !== $event && $event->getDuration() > 500) {
+                $this->output?->writeln(\sprintf(
+                    '    <comment>⏱ %dms (slow)</comment>',
+                    $event->getDuration(),
+                ));
+            }
+
             if (true !== $scan) {
                 $pageId = (int) $page->id;
                 $errors[$pageId] = $scan;
                 foreach ($scan as $s) {
                     $route = $s['page']['host'].'/'.$s['page']['slug'];
                     if (! $this->mustIgnoreError($route, $s['message'])) {
-                        $this->output?->writeln($route.' ➜ '.str_replace(['<code>', '</code>'], '`', $s['message']));
+                        $this->output?->writeln('  ➜ '.str_replace(['<code>', '</code>'], '`', $s['message']));
                     }
                 }
 
@@ -83,6 +102,8 @@ final class PageScannerCommand
             }
 
             if ($errorNbr > 500) {
+                $this->output?->writeln('Too many errors (>500), stopping scan...');
+
                 break;
             }
         }
@@ -93,7 +114,9 @@ final class PageScannerCommand
             $urlCount = \count($externalUrls);
             if ($urlCount > 0) {
                 $this->output?->writeln(\sprintf('Checking %d external URLs in parallel...', $urlCount));
+                $this->stopwatch?->start('external.urls');
                 $urlResults = $this->parallelUrlChecker->checkUrls($externalUrls);
+                $this->stopwatch?->stop('external.urls');
                 $this->scanner->linkedDocsScanner->setExternalUrlResults($urlResults);
             }
         }
@@ -120,6 +143,8 @@ final class PageScannerCommand
 
     private bool $skipExternal = false;
 
+    private ?Stopwatch $stopwatch = null;
+
     private function mustIgnoreError(string $route, string $message): bool
     {
         $plainMessage = strip_tags($message);
@@ -145,17 +170,97 @@ final class PageScannerCommand
         #[Option(description: 'Skip external link checks', name: 'skip-external')]
         bool $skipExternal = false,
     ): int {
-        $output->writeln('Acquiring page scanner lock to start the scan...');
-        $this->output = $output;
-
         $this->skipExternal = $skipExternal;
 
-        if ($this->scanAllWithLock($host ?? '')) {
-            $output->writeln('done...');
-        } else {
-            $output->writeln('cannot acquiring the page scanner lock...');
+        // Check if same process type is already running (via PID file)
+        $pidFile = $this->processManager->getPidFilePath(self::PROCESS_TYPE);
+        $this->processManager->cleanupStaleProcess($pidFile);
+        $processInfo = $this->processManager->getProcessInfo($pidFile);
+
+        if ($processInfo['isRunning']) {
+            $output->writeln('<error>A page scan is already running (PID: '.$processInfo['pid'].').</error>');
+
+            return Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        // Register this process and setup shared output
+        $this->processManager->registerProcess($pidFile, self::COMMAND_PATTERN);
+
+        // Only clear storage if not already initialized by web controller
+        // (web controller sets status to 'running' before starting background process)
+        $currentStatus = $this->outputStorage->getStatus(self::PROCESS_TYPE);
+        if ('running' !== $currentStatus) {
+            $this->outputStorage->clear(self::PROCESS_TYPE);
+            $this->outputStorage->setStatus(self::PROCESS_TYPE, 'running');
+        }
+
+        // Create tee output to write to both console and shared storage
+        $sharedOutput = new SharedOutputInterface($this->outputStorage, self::PROCESS_TYPE);
+        $teeOutput = new TeeOutput([$output, $sharedOutput]);
+        $this->output = $teeOutput;
+
+        try {
+            $teeOutput->writeln('<comment>PID: '.getmypid().'</comment>');
+
+            $this->stopwatch = new Stopwatch();
+            $this->stopwatch->start('scan');
+
+            $errors = $this->scanAll($host ?? '');
+            $this->filesystem->dumpFile(PageScannerController::fileCache(), serialize($errors));
+
+            $event = $this->stopwatch->stop('scan');
+            $teeOutput->writeln(\sprintf('done... (%dms)', $event->getDuration()));
+
+            // Print timing breakdown
+            $this->printTimingBreakdown($teeOutput);
+
+            $this->outputStorage->setStatus(self::PROCESS_TYPE, 'completed');
+
+            return Command::SUCCESS;
+        } finally {
+            // Clean up PID file
+            $this->processManager->unregisterProcess($pidFile);
+        }
+    }
+
+    private function printTimingBreakdown(OutputInterface $output): void
+    {
+        if (null === $this->stopwatch) {
+            return;
+        }
+
+        $sections = $this->stopwatch->getSections();
+        $timings = [];
+
+        foreach ($sections as $section) {
+            foreach ($section->getEvents() as $name => $event) {
+                // Skip our main event and internal Symfony events
+                if ('scan' === $name) {
+                    continue;
+                }
+                if ('__section__' === $name) {
+                    continue;
+                }
+                // Only include our custom timing events
+                if (! \in_array($name, ['preload.caches', 'external.urls', 'scanPage'], true)) {
+                    continue;
+                }
+
+                $timings[$name] = ($timings[$name] ?? 0) + $event->getDuration();
+            }
+        }
+
+        if ([] === $timings) {
+            return;
+        }
+
+        arsort($timings);
+
+        $output->writeln('');
+        $output->writeln('<comment>⏱ Timing breakdown:</comment>');
+
+        foreach ($timings as $name => $duration) {
+            $output->writeln(\sprintf('  %s: %dms', $name, $duration));
+        }
     }
 }
