@@ -7,13 +7,10 @@ use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Contracts\Provider\AdminContextProviderInterface;
 use Exception;
 use LogicException;
+use Pushword\Core\BackgroundTask\BackgroundTaskDispatcherInterface;
 use Pushword\Core\Service\BackgroundProcessManager;
 use Pushword\Core\Service\ProcessOutputStorage;
 use Pushword\Core\Utils\LastTime;
-
-use function Safe\file_get_contents;
-use function Safe\filemtime;
-
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,6 +34,7 @@ final class PageScannerController extends AbstractController
         private readonly Filesystem $filesystem,
         string $varDir,
         private readonly string $pageScanInterval,
+        private readonly BackgroundTaskDispatcherInterface $backgroundTaskDispatcher,
         private readonly BackgroundProcessManager $processManager,
         private readonly ProcessOutputStorage $outputStorage,
         private readonly array $errorsToIgnore = [],
@@ -94,7 +92,7 @@ final class PageScannerController extends AbstractController
         // Check for existing results
         if ($this->filesystem->exists($fileCache)) {
             /** @var array<int, array<int, array{page: array{host: string, slug: string}, message: string}>> */
-            $errors = unserialize(file_get_contents($fileCache));
+            $errors = unserialize($this->filesystem->readFile($fileCache));
             $lastEdit = filemtime($fileCache);
         } else {
             $lastEdit = 0;
@@ -108,8 +106,8 @@ final class PageScannerController extends AbstractController
             $this->outputStorage->clear(self::PROCESS_TYPE);
             $this->outputStorage->setStatus(self::PROCESS_TYPE, 'running');
 
-            $this->processManager->startBackgroundProcess(
-                $pidFile,
+            $this->backgroundTaskDispatcher->dispatch(
+                self::PROCESS_TYPE,
                 ['php', 'bin/console', 'pw:page-scan'],
                 self::COMMAND_PATTERN,
             );
