@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner\Command;
 
 use Pushword\Core\Repository\PageRepository;
@@ -195,9 +197,9 @@ final class PageScannerCommand
         $plainMessage = strip_tags($message);
 
         foreach ($this->errorsToIgnore as $pattern) {
-            if (str_contains($pattern, ': ')) {
-                [$routePattern, $messagePattern] = explode(': ', $pattern, 2);
-                if (fnmatch($routePattern, $route) && fnmatch($messagePattern, $plainMessage)) {
+            $parts = explode(': ', $pattern, 2);
+            if (isset($parts[1])) {
+                if (fnmatch($parts[0], $route) && fnmatch($parts[1], $plainMessage)) {
                     return true;
                 }
             } elseif (fnmatch($pattern, $plainMessage)) {
@@ -225,10 +227,8 @@ final class PageScannerCommand
         $this->processManager->cleanupStaleProcess($pidFile);
         $processInfo = $this->processManager->getProcessInfo($pidFile);
 
-        if ($processInfo['isRunning']) {
-            $output->writeln('<error>A page scan is already running (PID: '.$processInfo['pid'].').</error>');
-
-            return Command::FAILURE;
+        if ($processInfo['isRunning'] && null !== $processInfo['pid']) {
+            return $this->streamRunningOutput($output, $processInfo['pid']);
         }
 
         // Register this process and setup shared output
@@ -319,5 +319,39 @@ final class PageScannerCommand
         }
 
         $output->writeln('<comment>⏱ '.implode(' | ', $parts).'</comment>');
+    }
+
+    private function streamRunningOutput(OutputInterface $output, int $pid): int
+    {
+        $output->writeln('<info>A page scan is already running (PID: '.$pid.'). Streaming its output...</info>');
+
+        $offset = 0;
+        while (true) {
+            $result = $this->outputStorage->read(self::PROCESS_TYPE, $offset);
+            if ('' !== $result['content']) {
+                $output->write($result['content']);
+                $offset = $result['offset'];
+            }
+
+            if ('running' !== $this->outputStorage->getStatus(self::PROCESS_TYPE)) {
+                break;
+            }
+
+            if (! $this->processManager->isProcessAlive($pid, self::COMMAND_PATTERN)) {
+                $output->writeln('<error>Process '.$pid.' is no longer running.</error>');
+
+                break;
+            }
+
+            usleep(500_000);
+        }
+
+        // Final read to capture any output written after last check
+        $result = $this->outputStorage->read(self::PROCESS_TYPE, $offset);
+        if ('' !== $result['content']) {
+            $output->write($result['content']);
+        }
+
+        return Command::SUCCESS;
     }
 }

@@ -3,6 +3,8 @@
 namespace Pushword\PageScanner;
 
 use DateTime;
+use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use Pushword\Core\Entity\Page;
 use Pushword\Core\Site\SiteRegistry;
@@ -48,6 +50,29 @@ class LinkedDocsScannerTest extends KernelTestCase
         self::assertSame([], $errors);
     }
 
+    #[DataProvider('homepageUrlProvider')]
+    public function testCrossHostInternalLinkToHomepage(string $url): void
+    {
+        self::bootKernel();
+        $scanner = $this->createScanner();
+        $scanner->preloadPageCache();
+
+        $errors = $scanner->scan($this->getPage('other-page'), '<a href="'.$url.'">home</a>');
+
+        self::assertSame([], $errors, $url.' should resolve internally without error');
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function homepageUrlProvider(): array
+    {
+        return [
+            'with trailing slash' => ['https://localhost.dev/'],
+            'without trailing slash' => ['https://localhost.dev'],
+        ];
+    }
+
     public function testCrossHostInternalLinkToMissingPage(): void
     {
         self::bootKernel();
@@ -60,6 +85,51 @@ class LinkedDocsScannerTest extends KernelTestCase
 
         self::assertCount(1, $errors);
         self::assertStringContainsString('https://localhost.dev/nonexistent', $errors[0]);
+    }
+
+    public function testCrossHostInternalLinkToUnpublishedPage(): void
+    {
+        self::bootKernel();
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+
+        $unpublished = new Page();
+        $unpublished->setH1('Future page');
+        $unpublished->setSlug('future-page');
+        $unpublished->host = 'localhost.dev';
+        $unpublished->locale = 'en';
+        $unpublished->setMainContent('...');
+        $unpublished->setPublishedAt(new DateTime('+1 year'));
+
+        $em->persist($unpublished);
+        $em->flush();
+
+        try {
+            $scanner = $this->createScanner();
+            $scanner->preloadPageCache();
+
+            $html = '<a href="https://localhost.dev/future-page">link</a>';
+            $errors = $scanner->scan($this->getPage('other-page'), $html);
+
+            self::assertCount(1, $errors);
+            self::assertStringContainsString('https://localhost.dev/future-page', $errors[0]);
+        } finally {
+            $em->remove($unpublished);
+            $em->flush();
+        }
+    }
+
+    public function testCrossHostInternalLinkToRedirectionPage(): void
+    {
+        self::bootKernel();
+        $scanner = $this->createScanner();
+        $scanner->preloadPageCache();
+
+        // "pushword" page in fixtures has mainContent "Location: ..." → is a redirection
+        $html = '<a href="https://localhost.dev/pushword">link</a>';
+        $errors = $scanner->scan($this->getPage('other-page'), $html);
+
+        self::assertCount(1, $errors);
+        self::assertStringContainsString('https://localhost.dev/pushword', $errors[0]);
     }
 
     public function testExternalLinkStillTreatedAsExternal(): void
@@ -76,11 +146,12 @@ class LinkedDocsScannerTest extends KernelTestCase
         self::assertContains('https://unknown-host.com/page', $scanner->getCollectedExternalUrls());
     }
 
-    private function getPage(): Page
+    private function getPage(string $slug = 'homepage', string $host = ''): Page
     {
         $page = new Page();
         $page->setH1('Welcome to Pushword !');
-        $page->setSlug('homepage');
+        $page->setSlug($slug);
+        $page->host = $host;
         $page->locale = 'en';
         $page->createdAt = new DateTime('2 days ago');
         $page->setMainContent('...');
