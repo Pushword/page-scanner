@@ -2,18 +2,13 @@
 
 namespace Pushword\TemplateEditor\Tests;
 
-use EasyCorp\Bundle\EasyAdminBundle\Contracts\Provider\AdminContextProviderInterface;
 use PHPUnit\Framework\Attributes\Group;
 use Pushword\Admin\Tests\AbstractAdminTestClass;
 use Pushword\Core\BackgroundTask\BackgroundTaskDispatcherInterface;
-use Pushword\Core\Service\BackgroundProcessManager;
 use Pushword\Core\Service\ProcessOutputStorage;
-use Pushword\Core\Site\SiteRegistry;
-use Pushword\PageScanner\Controller\PageScannerController;
 use RuntimeException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
-use Twig\Error\RuntimeError;
 
 #[Group('integration')]
 class PageScannerControllerTest extends AbstractAdminTestClass
@@ -28,104 +23,29 @@ class PageScannerControllerTest extends AbstractAdminTestClass
         self::assertResponseIsSuccessful();
     }
 
-    public function testAdminWithHost(): void
-    {
-        $client = $this->loginUser();
-
-        $client->catchExceptions(false);
-
-        $client->request(Request::METHOD_GET, '/admin/scan?host=localhost.dev');
-        self::assertResponseIsSuccessful();
-    }
-
     public function testDispatchErrorIsShownInConsole(): void
     {
         $client = $this->loginUser();
-        $container = $client->getContainer();
 
-        $isolatedDir = sys_get_temp_dir().'/pw-test-'.uniqid();
-        $outputStorage = new ProcessOutputStorage(new Filesystem(), $isolatedDir);
-
-        $mockProcessManager = self::createStub(BackgroundProcessManager::class);
-        $mockProcessManager->method('getProcessInfo')->willReturn(['isRunning' => false, 'startTime' => null, 'pid' => null]);
-        $mockProcessManager->method('getPidFilePath')->willReturn(sys_get_temp_dir().'/pushword-test-scanner.pid');
+        $client->disableReboot();
 
         $mockDispatcher = self::createStub(BackgroundTaskDispatcherInterface::class);
         $mockDispatcher->method('dispatch')
             ->willThrowException(new RuntimeException('nohup failed'));
+        $client->getContainer()->set(BackgroundTaskDispatcherInterface::class, $mockDispatcher);
 
-        $mockAdminContext = self::createStub(AdminContextProviderInterface::class);
-        $mockAdminContext->method('getContext')->willReturn(null);
-
-        /** @var SiteRegistry $siteRegistry */
-        $siteRegistry = $container->get(SiteRegistry::class);
-
-        $controller = new PageScannerController(
-            new Filesystem(),
-            $isolatedDir,
-            'PT5M',
-            $mockDispatcher,
-            $mockProcessManager,
-            $outputStorage,
-            $siteRegistry,
-        );
-        $controller->setAdminContextProvider($mockAdminContext);
-        $controller->setContainer($container);
-
-        try {
-            $controller->scan(new Request(['host' => '']), 1);
-        } catch (RuntimeError) {
-            // Template rendering fails without EasyAdmin context, but error handling already executed
-        }
-
-        self::assertSame('error', $outputStorage->getStatus('page-scanner'));
-        self::assertStringContainsString('nohup failed', $outputStorage->read('page-scanner')['content']);
-
-        new Filesystem()->remove($isolatedDir);
-    }
-
-    public function testDispatchErrorWithHostUsesPerHostProcessType(): void
-    {
-        $client = $this->loginUser();
-        $container = $client->getContainer();
-
+        // Use an isolated temp directory to avoid race conditions with parallel tests
         $isolatedDir = sys_get_temp_dir().'/pw-test-'.uniqid();
-        $outputStorage = new ProcessOutputStorage(new Filesystem(), $isolatedDir);
+        $isolatedStorage = new ProcessOutputStorage(new Filesystem(), $isolatedDir);
+        $client->getContainer()->set(ProcessOutputStorage::class, $isolatedStorage);
 
-        $mockProcessManager = self::createStub(BackgroundProcessManager::class);
-        $mockProcessManager->method('getProcessInfo')->willReturn(['isRunning' => false, 'startTime' => null, 'pid' => null]);
-        $mockProcessManager->method('getPidFilePath')->willReturn(sys_get_temp_dir().'/pushword-test-scanner-host.pid');
+        // force=1 to bypass the interval check and actually dispatch
+        $client->request(Request::METHOD_GET, '/admin/scan/1');
+        self::assertResponseIsSuccessful();
 
-        $mockDispatcher = self::createStub(BackgroundTaskDispatcherInterface::class);
-        $mockDispatcher->method('dispatch')
-            ->willThrowException(new RuntimeException('nohup failed'));
+        self::assertSame('error', $isolatedStorage->getStatus('page-scanner'));
+        self::assertStringContainsString('nohup failed', $isolatedStorage->read('page-scanner')['content']);
 
-        $mockAdminContext = self::createStub(AdminContextProviderInterface::class);
-        $mockAdminContext->method('getContext')->willReturn(null);
-
-        /** @var SiteRegistry $siteRegistry */
-        $siteRegistry = $container->get(SiteRegistry::class);
-
-        $controller = new PageScannerController(
-            new Filesystem(),
-            $isolatedDir,
-            'PT5M',
-            $mockDispatcher,
-            $mockProcessManager,
-            $outputStorage,
-            $siteRegistry,
-        );
-        $controller->setAdminContextProvider($mockAdminContext);
-        $controller->setContainer($container);
-
-        try {
-            $controller->scan(new Request(['host' => 'localhost.dev']), 1);
-        } catch (RuntimeError) {
-        }
-
-        self::assertSame('error', $outputStorage->getStatus('page-scanner--localhost.dev'));
-        self::assertStringContainsString('nohup failed', $outputStorage->read('page-scanner--localhost.dev')['content']);
-
-        new Filesystem()->remove($isolatedDir);
+        (new Filesystem())->remove($isolatedDir);
     }
 }

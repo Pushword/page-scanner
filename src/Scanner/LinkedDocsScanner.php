@@ -7,7 +7,6 @@ use Exception;
 use Override;
 use PiedWeb\Curl\ExtendedClient;
 use PiedWeb\Curl\Helper;
-use Pushword\Core\Entity\Media;
 use Pushword\Core\Entity\Page;
 use Pushword\Core\Service\LinkProvider;
 use Pushword\Core\Site\SiteRegistry;
@@ -169,7 +168,8 @@ final class LinkedDocsScanner extends AbstractScanner
             ->getResult();
 
         foreach ($pages as $page) {
-            $this->pageCache[$page->host.'/'.$page->getSlug()] = $page;
+            $key = $page->host.'/'.$page->getSlug();
+            $this->pageCache[$key] = $page;
         }
     }
 
@@ -311,7 +311,7 @@ final class LinkedDocsScanner extends AbstractScanner
     {
         $parsed = parse_url($url);
         $host = $parsed['host'] ?? '';
-        $slug = ltrim($parsed['path'] ?? '', '/') ?: 'homepage';
+        $slug = ltrim($parsed['path'] ?? '', '/');
 
         $cacheKey = $host.'/'.$slug;
 
@@ -540,44 +540,22 @@ final class LinkedDocsScanner extends AbstractScanner
 
         $slug = ltrim($uri, '/');
 
-        $cacheKey = $this->page->host.'/'.$slug;
-
-        if (isset($this->everChecked[$cacheKey])) {
-            return $this->everChecked[$cacheKey];
+        if (isset($this->everChecked[$slug])) {
+            return $this->everChecked[$slug];
         }
 
-        $isMedia = str_starts_with($slug, 'media/');
+        $checkDatabase = ! str_starts_with($slug, 'media/'); // we avoid to check in db the media, file exists is enough
 
-        if (! $isMedia) {
+        if ($checkDatabase) {
             $this->lastPageChecked = $this->findPageInCacheOrDb($slug);
         }
 
-        $this->everChecked[$cacheKey] = $this->lastPageChecked instanceof Page
-            || ($isMedia && $this->mediaExistsBySlug(substr($slug, 6)))
+        $this->everChecked[$slug] = $this->lastPageChecked instanceof Page
             || file_exists($this->publicDir.'/'.$slug)
             || file_exists($this->publicDir.'/../'.$slug)
             || 'feed.xml' === $slug;
 
-        return $this->everChecked[$cacheKey];
-    }
-
-    /**
-     * Check if a media file exists by its slug (after stripping "media/" prefix).
-     * Handles filter prefixes (e.g., "xs/image.webp") and format conversions (webp→jpg).
-     */
-    private function mediaExistsBySlug(string $mediaSlug): bool
-    {
-        $repo = $this->entityManager->getRepository(Media::class);
-        $fileName = basename($mediaSlug);
-
-        if (null !== $repo->findOneByFileName($fileName)) {
-            return true;
-        }
-
-        // For filtered images, the extension may differ from the original (e.g., .webp from .jpg)
-        $baseName = pathinfo($fileName, \PATHINFO_FILENAME);
-
-        return array_any(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'], static fn ($ext): bool => null !== $repo->findOneByFileName($baseName.'.'.$ext));
+        return $this->everChecked[$slug];
     }
 
     private function findPageInCacheOrDb(string $slug): ?Page
