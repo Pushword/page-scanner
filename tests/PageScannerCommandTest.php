@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner\Tests;
 
 use PHPUnit\Framework\Attributes\Group;
@@ -8,7 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 #[Group('integration')]
-class PageScannerCommandTest extends KernelTestCase
+final class PageScannerCommandTest extends KernelTestCase
 {
     public function testPageScannerCommand(): void
     {
@@ -21,7 +23,7 @@ class PageScannerCommandTest extends KernelTestCase
 
         // the output of the command in the console
         $output = $commandTester->getDisplay();
-        self::assertTrue(str_contains($output, 'done...'));
+        self::assertStringContainsString('done...', $output);
     }
 
     public function testPageScannerCommandWithLimit(): void

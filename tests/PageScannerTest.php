@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner;
 
 use DateTime;
@@ -9,7 +11,7 @@ use Pushword\PageScanner\Scanner\PageScannerService;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 #[Group('integration')]
-class PageScannerTest extends KernelTestCase
+final class PageScannerTest extends KernelTestCase
 {
     public function testIt(): void
     {

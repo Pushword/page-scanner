@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\TemplateEditor\Tests;
 
 use EasyCorp\Bundle\EasyAdminBundle\Contracts\Provider\AdminContextProviderInterface;
@@ -16,7 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Twig\Error\RuntimeError;
 
 #[Group('integration')]
-class PageScannerControllerTest extends AbstractAdminTestClass
+final class PageScannerControllerTest extends AbstractAdminTestClass
 {
     public function testAdmin(): void
     {

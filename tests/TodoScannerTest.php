@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner;
 
 use DateTime;
@@ -10,7 +12,7 @@ use Pushword\PageScanner\Scanner\TodoScanner;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 #[Group('integration')]
-class TodoScannerTest extends KernelTestCase
+final class TodoScannerTest extends KernelTestCase
 {
     private TodoScanner $scanner;
 

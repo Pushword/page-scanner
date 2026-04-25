@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner\Tests\Scanner;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Pushword\PageScanner\Scanner\RegexHelper;
 
-class RegexHelperTest extends TestCase
+final class RegexHelperTest extends TestCase
 {
     #[DataProvider('provideStringEscaping')]
     public function testPrepareForRegexWithString(string $input, string $expected): void
