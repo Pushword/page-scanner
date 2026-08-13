@@ -230,6 +230,42 @@ final class LinkedDocsScannerTest extends KernelTestCase
     }
 
     /**
+     * @return Iterator<string, array{string}>
+     */
+    public static function srcsetSpellingProvider(): Iterator
+    {
+        yield 'lazy-load data-srcset' => ['<img data-srcset="/media/lg/zzz-unknown-media.webp 1200w" alt="x">'];
+        yield 'preload imagesrcset' => ['<link rel="preload" as="image" imagesrcset="/media/lg/zzz-unknown-media.webp 1200w">'];
+        yield 'entry without a width descriptor' => ['<img srcset="/media/lg/zzz-unknown-media.webp" alt="x">'];
+        yield 'single-quoted attribute' => ["<img srcset='/media/lg/zzz-unknown-media.webp 1200w' alt=\"x\">"];
+    }
+
+    #[DataProvider('srcsetSpellingProvider')]
+    public function testEverySrcsetSpellingIsExtracted(string $html): void
+    {
+        self::bootKernel();
+        $scanner = $this->createScanner();
+        $scanner->preloadPageCache();
+
+        $errors = $this->messages($scanner, $this->getPage(), $html);
+
+        self::assertCount(1, $errors);
+        self::assertStringContainsString('/media/lg/zzz-unknown-media.webp', $errors[0]);
+    }
+
+    public function testEmptySrcsetIsSilentlyIgnored(): void
+    {
+        self::bootKernel();
+        $scanner = $this->createScanner();
+        $scanner->preloadPageCache();
+
+        // Third-party markup: an empty srcset offers no candidate, so there is nothing
+        // to check. (Pushword's own <picture> fallback used to render one; the <img>
+        // behind a modern <source> now carries no srcset at all.)
+        self::assertSame([], $this->messages($scanner, $this->getPage(), '<img srcset="" alt="x">'));
+    }
+
+    /**
      * The DB row proves the source exists; the served bytes are a derivative file.
      * A media whose derivative is missing from disk — or 0-byte, the poisoned-cache
      * case served as an empty 200 — must be reported even though the DB is green.
