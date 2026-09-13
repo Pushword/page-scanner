@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner\Scanner;
 
 use Doctrine\ORM\EntityManagerInterface;
@@ -47,6 +49,11 @@ final class LinkedDocsScanner extends AbstractScanner
     private int $linksCheckedCounter = 0;
 
     private ?DomCrawler $domPage = null;
+
+    /** @var array<string, true>|null */
+    private ?array $nativeAnchors = null;
+
+    private ?RenderedPageFacts $nativeFacts = null;
 
     /** @var string[] */
     private array $toIgnore = [];
@@ -297,6 +304,17 @@ final class LinkedDocsScanner extends AbstractScanner
      */
     private function getLinkedDocs(): array
     {
+        if (null !== $this->nativeFacts) {
+            foreach ($this->nativeFacts->mailtoLinks as $uri) {
+                $this->addError(ScanErrorCode::LinkMailto, '<code>'.$uri.'</code> '.$this->trans('page_scanObfuscateMail'));
+            }
+
+            $this->crawlableLinks = array_fill_keys($this->nativeFacts->crawlableLinks, true);
+
+            return $this->nativeFacts->linkedDocs;
+        }
+
+        $matches = [];
         $urlInAttributes = ' '.$this->prepareForRegex(['href', 'data-rot', 'src', 'data-img', 'data-bg']);
         $regex = '/'.$urlInAttributes.'=((["\'])([^\3]+)\3|([^\s>]+)[\s>])/iU';
         preg_match_all($regex, $this->stripCodeSamples(), $matches);
@@ -306,13 +324,14 @@ final class LinkedDocsScanner extends AbstractScanner
         }
 
         $linkedDocs = [];
-        $matchesCount = is_countable($matches[0]) ? \count($matches[0]) : 0;
+        $matchesCount = is_countable($matches[0] ?? null) ? \count($matches[0]) : 0;
         for ($k = 0; $k < $matchesCount; ++$k) {
-            // an unmatched group is an empty string, never unset: the quoted
-            // value (4) is empty when the attribute value came unquoted (5).
+            // An unmatched group is empty, never unset: the quoted value
+            // (4) is empty when the attribute came unquoted (5).
             /** @var string */
             $uri = '' !== $matches[4][$k] ? $matches[4][$k] : $matches[5][$k]; // @phpstan-ignore-line
             $isDataRotAttribute = 'data-rot' === $matches[1][$k]; // @phpstan-ignore-line
+
             $uri = $isDataRotAttribute ? LinkProvider::decrypt($uri) : $uri;
             if ($this->isMailtoOrTelLink($uri) && ! $isDataRotAttribute) {
                 $this->addError(ScanErrorCode::LinkMailto, '<code>'.$uri.'</code> '.$this->trans('page_scanObfuscateMail'));
@@ -345,7 +364,6 @@ final class LinkedDocsScanner extends AbstractScanner
     private function extractSrcsetUris(): array
     {
         preg_match_all('/\s(?:srcset|imagesrcset|data-srcset)=(["\'])(.*?)\1/i', $this->stripCodeSamples(), $matches);
-
         $srcsets = isset($matches[2]) && \is_array($matches[2]) ? $matches[2] : [];
 
         $uris = [];
@@ -584,12 +602,19 @@ final class LinkedDocsScanner extends AbstractScanner
     }
 
     #[Override]
-    public function scan(Page $page, string $pageHtml): array
+    public function scan(Page $page, string $pageHtml, ?RenderedPageFacts $facts = null): array
     {
-        /** @return string[] */
-        $this->domPage = new DomCrawler($pageHtml);
+        $this->nativeAnchors = null === $facts ? null : array_fill_keys($facts->anchors, true);
+        $this->nativeFacts = $facts;
+        $this->domPage = null === $facts ? new DomCrawler($pageHtml) : null;
 
-        return parent::scan($page, $pageHtml);
+        try {
+            return parent::scan($page, $pageHtml);
+        } finally {
+            $this->nativeAnchors = null;
+            $this->nativeFacts = null;
+            $this->domPage = null;
+        }
     }
 
     private function getDomPage(): DomCrawler
@@ -599,6 +624,10 @@ final class LinkedDocsScanner extends AbstractScanner
 
     private function targetExist(string $target): bool
     {
+        if (null !== $this->nativeAnchors) {
+            return isset($this->nativeAnchors[$target]);
+        }
+
         $node = $this->getDomPage()->filter('[name="'.$target.'"]')->getNode(0)
             ?? $this->getDomPage()->filter('[id="'.$target.'"]')->getNode(0);
 

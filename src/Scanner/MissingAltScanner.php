@@ -1,6 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner\Scanner;
+
+use Override;
+use Pushword\Core\Entity\Page;
 
 /**
  * Report rendered images carrying no alternative text.
@@ -20,9 +25,32 @@ final class MissingAltScanner extends AbstractScanner
 
     private const string SRC_PATTERN = '/\ssrc\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))/i';
 
+    /** @var list<string>|null */
+    private ?array $nativeMissingAlt = null;
+
+    #[Override]
+    public function scan(Page $page, string $pageHtml, ?RenderedPageFacts $facts = null): array
+    {
+        $this->nativeMissingAlt = $facts?->missingAlt;
+
+        try {
+            return parent::scan($page, $pageHtml);
+        } finally {
+            $this->nativeMissingAlt = null;
+        }
+    }
+
     protected function run(): void
     {
         if ('' === $this->pageHtml) {
+            return;
+        }
+
+        if (null !== $this->nativeMissingAlt) {
+            foreach ($this->nativeMissingAlt as $label) {
+                $this->report($label);
+            }
+
             return;
         }
 
@@ -48,8 +76,13 @@ final class MissingAltScanner extends AbstractScanner
             $reported[$src] = true;
             // With no src there is nothing to name the image by, so quote the tag.
             $label = '' !== $src ? $src : $img;
-            $this->addError(ScanErrorCode::ImageAltMissing, '<code>'.htmlspecialchars($label).'</code> '.$this->trans('page_scanMissingAlt'));
+            $this->report($label);
         }
+    }
+
+    private function report(string $label): void
+    {
+        $this->addError(ScanErrorCode::ImageAltMissing, '<code>'.htmlspecialchars($label).'</code> '.$this->trans('page_scanMissingAlt'));
     }
 
     /**

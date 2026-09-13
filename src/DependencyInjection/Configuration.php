@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\PageScanner\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -41,6 +43,8 @@ class Configuration implements ConfigurationInterface
                         ->defaultFalse()
                         ->info('Skip external URL validation entirely for faster scans')
                         ->end()
+                    ->scalarNode('native_page_facts')->defaultNull()->end()
+                    ->floatNode('native_page_facts_timeout')->defaultValue(5.0)->min(0.001)->end()
                     ->arrayNode('links_to_ignore')
                         ->prototype('scalar')
                             ->defaultValue(['https://www.example.tld/*', '/admin/*'])
